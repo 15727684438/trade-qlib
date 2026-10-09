@@ -1,0 +1,41 @@
+{
+  "max_open_trades": 1,
+  "stake_currency": "USD",
+  "stake_amount": "unlimited",
+  "dry_run_wallet": 100000,
+  "trading_mode": "futures",
+  "margin_mode": "isolated",
+  "fee": 0.0005,
+  "exchange": {
+    "name": "okx",
+    "pair_whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT"],
+    "_ft_has_params": {
+      "uses_leverage_tiers": false
+    },
+    "ccxt_config": {
+      "httpProxy": "http://127.0.0.1:8888",
+      "timeout": 30000
+    },
+    "ccxt_async_config": {
+      "httpProxy": "http://127.0.0.1:8888",
+      "timeout": 30000
+    }
+  },
+  "pairlists": [{"method": "StaticPairList", "allow_inactive": true}],
+  "stoploss": -0.05,
+  "minimal_roi": {"0": 100},
+  "entry_pricing": {
+    "price_side": "same",
+    "use_order_book": true,
+    "order_book_top": 1,
+    "price_last_balance": 0.0,
+    "check_depth_of_market": {"enabled": false, "bids_to_ask_delta": 1}
+  },
+  "exit_pricing": {
+    "price_side": "other",
+    "use_order_book": true,
+    "order_book_top": 1
+  },
+  "dataformat_ohlcv": "feather",
+  "dataformat_trades": "feather"
+}

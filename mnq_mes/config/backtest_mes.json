@@ -1,0 +1,38 @@
+{
+  "max_open_trades": 1,
+  "stake_currency": "USD",
+  "stake_amount": "unlimited",
+  "dry_run_wallet": 50000,
+  "trading_mode": "futures",
+  "margin_mode": "isolated",
+  "futures_funding_rate": 0,
+  "fee": 0.0001,
+  "exchange": {
+    "name": "gate",
+    "pair_whitelist": ["MES/USD:USD"],
+    "_ft_has_params": {
+      "uses_leverage_tiers": false,
+      "mark_ohlcv_timeframe": "1d",
+      "funding_fee_timeframe": "1d"
+    },
+    "ccxt_config": {"timeout": 30000},
+    "ccxt_async_config": {"timeout": 30000}
+  },
+  "pairlists": [{"method": "StaticPairList", "allow_inactive": true}],
+  "stoploss": -0.05,
+  "minimal_roi": {"0": 100},
+  "entry_pricing": {
+    "price_side": "same",
+    "use_order_book": true,
+    "order_book_top": 1,
+    "price_last_balance": 0.0,
+    "check_depth_of_market": {"enabled": false, "bids_to_ask_delta": 1}
+  },
+  "exit_pricing": {
+    "price_side": "other",
+    "use_order_book": true,
+    "order_book_top": 1
+  },
+  "dataformat_ohlcv": "feather",
+  "dataformat_trades": "feather"
+}

@@ -1,0 +1,17 @@
+{
+  "exchange": {
+    "name": "okx",
+    "pair_whitelist": ["BTC/USDT:USDT", "ETH/USDT:USDT"],
+    "ccxt_config": {
+      "httpProxy": "http://127.0.0.1:8888",
+      "timeout": 30000
+    },
+    "ccxt_async_config": {
+      "httpProxy": "http://127.0.0.1:8888",
+      "timeout": 30000
+    }
+  },
+  "pairlists": [{"method": "StaticPairList", "allow_inactive": true}],
+  "dataformat_ohlcv": "feather",
+  "dataformat_trades": "feather"
+}
