@@ -115,6 +115,15 @@ powershell -ExecutionPolicy Bypass -File qlib_research\bootstrap.ps1 -RawCsv "D:
 - ⚠️ Sharpe（1.15–3.31）被"空仓期记零"口径**高估**，不可与日频 Sharpe 比较。
 - **结论**：动量推动的**中位数相等**与**长短互补**是真实但**噪声极大**的统计规律；作为入场/目标规则边际很小，且**风控仍是瓶颈**。证据：`tf_mnq/results/MOMENTUM_IMPULSE.md`、`momentum_impulse_stats.csv`、`momentum_grid.csv`、`momentum.py`。
 
+### V3b 动量出入场优化（动态目标 vs 固定目标，IS-only）结论（2026-10-10）
+> 5min 互补效应**成立**；**动态目标 E[P2\|P1] 优于最佳固定目标**；但**仍无配置满足 MaxDD≤$1,500**。另修复了带门入场的**前视 bug**。
+
+- **5min/1min 验证**：按 P1 三分位中位 r2 = 低 **1.161** / 中 1.000 / 高 **0.821**（1min 低 1.154/高 0.833），P(r2≥1)=0.646/0.503/0.355 → **互补性跨周期成立**；r3 与 r2 同分布（无三推衰减）。
+- **动态 vs 固定目标**（净额）：15min `dyn` **+$1,091** vs 最佳固定 `f0.75` −$1,861（+$2,952）；5min dyn −$51,882 vs −$53,155。MaxDD 基本持平。
+- **最佳配置 `15_dyn_long`**（仅多、动态目标、2 手、部分止盈+跟踪）：1.5t n=3077、PF 1.046、胜率 0.428、净 **+$11,962**、**MaxDD@1c $12,691 / @2c $25,382**；3t 净 +$2,645、MaxDD@1c $7,896。
+- **无配置满足 MaxDD≤$1,500**（@1c/@2c 均不可，最低也 $6,330）；**多单为正、空单为负**。
+- ⚠️ **前视修复**：门控原读 `close[k]`（入场 bar）→ 改为 `close[k-1]`；`15_dyn_regime` 由虚高 +$34,071 回落至 **+$7,515**。证据：`tf_mnq/results/MOMENTUM_OPT.md`、`momentum_opt_grid.csv`、`run_momentum_opt.py`。
+
 ### ★ 最终 OOS 验证（A_T2，单次触碰）结论（2026-10-10）—— V2 家族关闭
 > 冻结配置 A_T2（15min、long-only、EMA20/144 体制、Donchian-20 突破、结构止损、base 门控）**单次 OOS = OVERALL FAIL**（5 门槛仅 1 通过）。**V2 家族关闭，不再二次触碰、不再调参。**
 
