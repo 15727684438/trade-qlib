@@ -124,6 +124,14 @@ powershell -ExecutionPolicy Bypass -File qlib_research\bootstrap.ps1 -RawCsv "D:
 - **无配置满足 MaxDD≤$1,500**（@1c/@2c 均不可，最低也 $6,330）；**多单为正、空单为负**。
 - ⚠️ **前视修复**：门控原读 `close[k]`（入场 bar）→ 改为 `close[k-1]`；`15_dyn_regime` 由虚高 +$34,071 回落至 **+$7,515**。证据：`tf_mnq/results/MOMENTUM_OPT.md`、`momentum_opt_grid.csv`、`run_momentum_opt.py`。
 
+### V4 等长趋势 K 线组合 → Measured Move（IS-only）结论（2026-10-10）
+> **无实质边缘**：20 根内到达 2×实体目标概率 **57–61%**，随机基准 **53–57%** → 超额仅 **+1~4pp**。
+
+- 形态：≥3 根同向、实体近似等长（tol ±25/40/60%）的连续 K 线；目标 = 组合实体距离翻倍（自首根开盘起 2×D）；从下一根起测。
+- **有正边际的条件**（超额，非绝对命中）：**欧洲时段 +10~14pp**、**大组合 +7~8pp**、**高波动 +5~6pp**、美国时段 +6pp；**亚洲/盘后为负**（−7~−17pp）。小组合绝对命中高（0.76）但**无超额**（0.758 基准）——只是"距离短好达到"。
+- **风险侧**：~**46%** 概率在到达目标前**先回落触及组合起点**（全 D 回撤）；MFE/D≈1.3–1.5、MAE/D≈1.4–1.7（近对称）；中位 5 根到目标；15/5/1min 相近；D 与 D_sum 目标几乎相同。
+- **判定**：**描述性现象，非可交易信号**（未含成本、未做 OOS）。若勉强用，只能叠加**欧洲时段 + 波动 regime** 过滤，且必须计入"先破起点"的风险。证据：`tf_mnq/results/MEASURED_MOVE.md`、`measured_move_stats.csv`、`measured_move.py`。
+
 ### ★ 最终 OOS 验证（A_T2，单次触碰）结论（2026-10-10）—— V2 家族关闭
 > 冻结配置 A_T2（15min、long-only、EMA20/144 体制、Donchian-20 突破、结构止损、base 门控）**单次 OOS = OVERALL FAIL**（5 门槛仅 1 通过）。**V2 家族关闭，不再二次触碰、不再调参。**
 
@@ -149,7 +157,7 @@ powershell -ExecutionPolicy Bypass -File qlib_research\bootstrap.ps1 -RawCsv "D:
 
 ### R2. Measured Move（等长趋势 K 线组合 → 实体距离翻倍）
 - **问题**：≥3 根同向、实体近似等长的连续 K 线组合，是否容易到达"组合实体距离翻倍"的 MM 目标？
-- **状态**：研究中（`measured_move.py`、`results/MEASURED_MOVE.md`）。
+- **状态**：**已完成**（结论见 §2「V4 等长趋势 K 线组合 → Measured Move」：无实质边缘，超额仅 +1~4pp，正边际集中在欧洲时段/高波动/大组合）。
 - **待深挖**：到达率 vs 基准率、**先破组合起点（风险侧）**、按方向/大小/周期/时段分层、可交易性。
 
 ### R3. 方法学教训（**务必遵守**）
