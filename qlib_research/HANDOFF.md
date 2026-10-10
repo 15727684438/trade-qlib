@@ -115,6 +115,19 @@ powershell -ExecutionPolicy Bypass -File qlib_research\bootstrap.ps1 -RawCsv "D:
 - ⚠️ Sharpe（1.15–3.31）被"空仓期记零"口径**高估**，不可与日频 Sharpe 比较。
 - **结论**：动量推动的**中位数相等**与**长短互补**是真实但**噪声极大**的统计规律；作为入场/目标规则边际很小，且**风控仍是瓶颈**。证据：`tf_mnq/results/MOMENTUM_IMPULSE.md`、`momentum_impulse_stats.csv`、`momentum_grid.csv`、`momentum.py`。
 
+### ★ 最终 OOS 验证（A_T2，单次触碰）结论（2026-10-10）—— V2 家族关闭
+> 冻结配置 A_T2（15min、long-only、EMA20/144 体制、Donchian-20 突破、结构止损、base 门控）**单次 OOS = OVERALL FAIL**（5 门槛仅 1 通过）。**V2 家族关闭，不再二次触碰、不再调参。**
+
+- STEP 1 复现 IS **精确一致**（n=774、PF 1.185462、win 0.361757、net $4,895.93、MaxDD $1,361.89、Sharpe 0.724，误差全 0）。
+- OOS（2024-01-01..2026-10-02，1 手）：n=514、PF **1.024**、win 0.352、net **+$689**、期望 +$1.34、Sharpe 0.13、**MaxDD@1c $2,872 / @2c $5,745**、CAGR 0.50%、MAR 0.09。
+- 分年：**2024** PF 1.182/+$1,231 · **2025** PF 0.858/−$1,704 · **2026** PF 1.115/+$1,162（2025 死年）。
+- 门槛：① MaxDD≤$1,500 FAIL（$2,872）② 期望>0 PASS ③ PF≥1.05 FAIL ④ 每年 PF≥1.0 FAIL（2025）⑤ OOS DD≤1.6×IS FAIL → **OVERALL FAIL**。
+- IS→OOS 退化：PF 1.185→1.024、期望 $6.33→$1.34（−79%）、MaxDD $1,362→$2,872（+111%）、Sharpe 0.72→0.13。
+- 证据：`tf_mnq/results/oos_A_T2.csv`、`oos_A_T2_trades.csv`、`run_oos_A_T2.py`、`STRATEGY_V2.md`。
+
+### 项目级结论（六族全败）
+15min Donchian、15min/5min 风险网格、V2 EMA20/144 结构止损（含 OOS）、V2B 2手5min 分批止盈、V3 动量二次推动 —— **全部无法在 `$50k / 1–2 手 / MaxDD≤$1,500` 内取得稳健（含样本外）正期望**。**瓶颈是该预算线本身。** 三条出路：① 放宽预算至 $3,000–5,000；② 换更小风险单位（CFD 0.2 手 / 更大账户）；③ retire 该品种方向研究。
+
 ---
 
 ## 3. 关键决策与规则（不可违反）

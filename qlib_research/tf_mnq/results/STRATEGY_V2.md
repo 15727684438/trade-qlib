@@ -38,3 +38,40 @@
 - Placebo (500 random-entry, n-matched, same structural stop + breaker): real PF=1.185 at 88.0th pct (p95=1.250, max=1.408); median placebo n=768 vs real 774.
 - Per-year net $ (A_T2): [(2019, -94), (2020, 989), (2021, 2161), (2022, 443), (2023, 1397)] -> 4/5 positive.
 - OOS NOT touched.
+
+---
+
+## OOS verdict — A_T2 (single pre-registered touch, 2024-01-01..2026-10-02)
+
+- IS reproduction: **OK** (n=774, PF 1.185, win 0.362, net $4895.93, MaxDD $1361.89, Sharpe 0.724) — matches frozen grid row A_T2.
+
+| period | n | PF | win | net$ | expectancy$ | Sharpe$ | MaxDD@1c$ | MaxDD@2c$ | worst$ | CAGR$ | MAR |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| IS 2019-05..2023-12 | 774 | 1.185 | 0.362 | $4896 | $6.33 | 0.72 | $1362 | $2724 | $-230 | 2.03% | 0.75 |
+| OOS 2024-01..2026-10 | 514 | 1.024 | 0.352 | $689 | $1.34 | 0.13 | $2872 | $5745 | $-647 | 0.50% | 0.09 |
+
+- 3t for the record: net $689, PF 1.024, MaxDD@1c $2872 (identical to 1.5t: `run_ema_struct` uses fixed 1/2/1-tick fills, so cost.slip_ticks does not bind here).
+
+### Per calendar year (OOS)
+
+| year | n | PF | net$ |
+|---|---|---|---|
+| 2024 | 150 | 1.182 | $1231 |
+| 2025 | 219 | 0.858 | $-1704 |
+| 2026 | 145 | 1.115 | $1162 |
+
+### Pre-registered gates
+
+| # | gate | actual | verdict |
+|---|---|---|---|
+| 1 | OOS MaxDD@1c <= $1,500 | $2872 | FAIL |
+| 2 | OOS expectancy > 0 | $1.34 | PASS |
+| 3 | OOS PF >= 1.05 | 1.024 | FAIL |
+| 4 | every year PF >= 1.0 | 2024=1.182, 2025=0.858, 2026=1.115 | FAIL |
+| 5 | OOS MaxDD@1c <= 1.6x IS ($2179) | $2872 | FAIL |
+
+**OVERALL OOS: FAIL** — at least one gate failed; the V2 family is closed (no second touch, no nudging, no re-tuning).
+
+### IS -> OOS degradation
+
+- PF 1.185 -> 1.024; win 0.362 -> 0.352; MaxDD@1c $1362 -> $2872; expectancy $6.33 -> $1.34.
