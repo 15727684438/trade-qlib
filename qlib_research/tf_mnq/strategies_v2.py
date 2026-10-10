@@ -4,7 +4,7 @@
 Reuses ``features.ema`` / ``features.pivot_low`` and mirrors the fill conventions
 of ``engine.run_structure_stop`` (entry = first 1min open of t+1 + 1 tick, stop
 fill = min(stop, open) - 2 ticks, regime exit = next 1min open - 1 tick,
-commission $0.75/side, point_value $2).
+commission $0.50/side + $0.20/side slip, point_value $2).
 """
 
 from __future__ import annotations

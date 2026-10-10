@@ -31,7 +31,7 @@ RESULTS_DIR = os.path.join(
 )
 BARS_PER_YEAR = 23 * 252  # Globex convention from the brief (5796)
 H_LABEL = 24
-COST = CostCfg(slip_ticks=1.5, commission_per_side=0.75, tick=0.25, point_value=2.0)
+COST = CostCfg(slip_ticks=0.4, commission_per_side=0.5, tick=0.25, point_value=2.0)
 
 
 # --------------------------------------------------------------------------- #

@@ -35,8 +35,8 @@ from tf_mnq.strategies import strategy_frame, veto_blocked  # noqa: E402
 
 RESULTS_DIR = os.path.join(_PKG_ROOT, "results")
 CONFIG_DIR = os.path.join(_PKG_ROOT, "config")
-COST = CostCfg(slip_ticks=1.5, commission_per_side=0.75, tick=0.25, point_value=2.0)
-COST3 = CostCfg(slip_ticks=3.0, commission_per_side=0.75, tick=0.25, point_value=2.0)
+COST = CostCfg(slip_ticks=0.4, commission_per_side=0.5, tick=0.25, point_value=2.0)
+COST3 = CostCfg(slip_ticks=3.0, commission_per_side=0.5, tick=0.25, point_value=2.0)
 FREQ = "15min"
 DONCH_CHAIN = [12, 20, 32]
 
@@ -510,6 +510,7 @@ def main() -> int:
         seal = os.path.join(CONFIG_DIR, "t1_sealed_15min.yaml")
         with open(seal, "w", encoding="utf-8") as fh:
             fh.write("# T1' sealed config v2 - 15min decisions, IN-SAMPLE ONLY\n")
+            fh.write("# Cost model corrected 2026-10-10: base ('1.5t' label retained) = commission $0.50/side + slippage $0.20/side ($1.40 round trip); stress ('3.0t') = $0.50/side + $1.50/side slippage.\n")
             fh.write(f"sealed_is_start: '{IS_START}'\nsealed_is_end: '{IS_END}'\n")
             fh.write("freq: 15min\nentry_mode: %s\n" % final_cfg.get("entry_mode", "market"))
             fh.write("trigger: donchian_breakout\n")

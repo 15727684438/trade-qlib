@@ -30,7 +30,7 @@ from tf_mnq.strategies_v2b import build_signals_v2b, run_ema2_struct  # noqa: E4
 
 RESULTS_DIR = os.path.join(_PKG_ROOT, "results")
 IS_START, IS_END = "2019-05-06", "2023-12-31"
-COST = CostCfg(slip_ticks=1.5, commission_per_side=0.75, tick=0.25, point_value=2.0)
+COST = CostCfg(slip_ticks=0.4, commission_per_side=0.5, tick=0.25, point_value=2.0)
 PV, ACCOUNT = 2.0, 50000.0
 ANCH = dict(pivot_n=2, buf=0.25, floor_mult=2.0, act_mult=0.0,
             regime_confirm=0, breakeven_atr=None)

@@ -29,8 +29,8 @@ from tf_mnq.momentum import (causal_zigzag, collect_sequences, fit_dyn_mult,  # 
 
 RESULTS_DIR = os.path.join(_PKG_ROOT, "results")
 IS_START, IS_END = "2019-05-06", "2023-12-31"
-COST = CostCfg(slip_ticks=1.5, commission_per_side=0.75, tick=0.25, point_value=2.0)
-COST3 = CostCfg(slip_ticks=3.0, commission_per_side=0.75, tick=0.25, point_value=2.0)
+COST = CostCfg(slip_ticks=0.4, commission_per_side=0.5, tick=0.25, point_value=2.0)
+COST3 = CostCfg(slip_ticks=3.0, commission_per_side=0.5, tick=0.25, point_value=2.0)
 PV, ACCOUNT, DD_GATE = 2.0, 50000.0, 1500.0
 K = 1.5
 
@@ -235,7 +235,9 @@ def main() -> int:
     L.append("Second-push entry (break of push1 extreme during push2), stop beyond the "
              "correction extreme with a 2.0*ATR floor, partial at the target (1 of 2 "
              "contracts, >=1 tick adverse), runner structural trail (pivot n=2, buf 0.25 "
-             "ATR, ratchet-only). Causal zigzag ATR k=1.5. $0.75/side, $2/pt.\n")
+             "ATR, ratchet-only). Causal zigzag ATR k=1.5. $0.50/side + $0.20/side slip, $2/pt.\n")
+    L.append("Cost model corrected 2026-10-10: commission $0.50/side ($1.00 open+close) "
+             "+ slippage $0.20/side; '1.5t' label retained, stress '3.0t' = $1.50/side slip.\n")
     L.append(f"- **Best @1c<=$1500**: {best1 if best1 else 'NONE'}\n")
     L.append(f"- **Best @2c<=$1500**: {best2 if best2 else 'NONE'}\n")
     L.append(f"- **Best by net (ungated)**: `{best_any}` net=${get(best_any,'net_profit_usd'):.0f} "

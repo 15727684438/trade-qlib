@@ -46,7 +46,7 @@ run_breakout = _m1b.run_breakout
 RESULTS_DIR = os.path.join(_PKG_ROOT, "results")
 CONFIG_DIR = os.path.join(_PKG_ROOT, "config")
 FIGS_DIR = os.path.join(RESULTS_DIR, "figs")
-COST = CostCfg(slip_ticks=1.5, commission_per_side=0.75, tick=0.25, point_value=2.0)
+COST = CostCfg(slip_ticks=0.4, commission_per_side=0.5, tick=0.25, point_value=2.0)
 FREQ = "15min"
 
 

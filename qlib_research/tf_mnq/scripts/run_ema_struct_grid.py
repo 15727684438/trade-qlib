@@ -32,8 +32,8 @@ from tf_mnq.strategies_v2 import build_signals_v2, regime_series, run_ema_struct
 
 RESULTS_DIR = os.path.join(_PKG_ROOT, "results")
 IS_START, IS_END = "2019-05-06", "2023-12-31"
-COST = CostCfg(slip_ticks=1.5, commission_per_side=0.75, tick=0.25, point_value=2.0)
-COST3 = CostCfg(slip_ticks=3.0, commission_per_side=0.75, tick=0.25, point_value=2.0)
+COST = CostCfg(slip_ticks=0.4, commission_per_side=0.5, tick=0.25, point_value=2.0)
+COST3 = CostCfg(slip_ticks=3.0, commission_per_side=0.5, tick=0.25, point_value=2.0)
 PV, ACCOUNT = 2.0, 50000.0
 DD_GATE, DD_HARD = 1200.0, 1500.0
 PROFIT_GATE = 5000.0
@@ -410,6 +410,8 @@ def main() -> int:
     L.append("# STRATEGY V2 — EMA20/144 regime + structural trail (IS-only verdict)\n")
     L.append("- Core regime EMA20>EMA144 & close>EMA144 (fixed); structural stop n=2/buf0.25/floor2.0/act0; "
              "base gates {VR<1, ATRpct<=90, ext<=2.5}; 1 contract, $50k, 1.5t (stress 3t).\n")
+    L.append("- Cost model corrected 2026-10-10: base ('1.5t') = $0.50/side comm + $0.20/side slip; "
+             "stress ('3.0t') = $0.50/side + $1.50/side slip.\n")
     L.append(f"- Pre-registered gates (both 1.5t & 3t): MaxDD_usd@1c<=${DD_GATE:.0f}; net profit>=${PROFIT_GATE:.0f}; "
              f"win in [0.42,0.55]; Sharpe>=1.0; expectancy>=$4; n>=250; worst trade>=-$400; "
              f"boot p<=0.10; neighborhood MaxDD<=${DD_HARD:.0f}.\n")

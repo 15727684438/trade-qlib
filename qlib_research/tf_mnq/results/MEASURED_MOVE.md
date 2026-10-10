@@ -2,6 +2,8 @@
 
 **Pattern**: >=3 consecutive same-direction candles with approximately equal bodies (each body within ``tol`` of the running segment mean). **D** = dir*(close[last]-open[first]); **MM target** = close[last] + dir*D (D_sum variant: close[last] + dir*D_sum). A combination is known only at the close of its last candle; the forward path is measured from the **next bar** (reference = next open). OOS (2024+) never touched.
 
+Cost model corrected 2026-10-10: commission $0.50/side ($1.00 open+close) + slippage $0.20/side; '1.5t' label retained, stress '3.0t' = $1.50/side slip. (This report is cost-free probabilities; the cost note applies to the downstream momentum/MM-performance reports.)
+
 ## Base-rate comparison (body target)
 
 Random-bar base rate = P(a random bar's forward move within N bars reaches the same required distance from the next-bar reference), estimated on a 200k-bar random sample.

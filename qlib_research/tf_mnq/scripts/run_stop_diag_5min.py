@@ -25,8 +25,8 @@ from tf_mnq.data import load_bars  # noqa: E402
 
 RESULTS = os.path.join(_PKG_ROOT, "results")
 IS_START, IS_END = "2019-05-06", "2023-12-31"
-PV, COMM, TICK = 2.0, 0.75, 0.25
-SLIP_PTS = 1.5 * TICK          # 1.5t
+PV, COMM, TICK = 2.0, 0.5, 0.25
+SLIP_PTS = 0.4 * TICK          # $0.20/side
 ACCOUNT = 50000.0
 WHIP_H = 3000                  # 1min bars horizon for the widened-stop path check
 WHIP_SAMPLE = 4000             # per config
@@ -211,7 +211,7 @@ def main() -> int:
 
     L = ["# STOP-LOSS diagnosis — 5min vs 15min (IS-only, read-only)\n"]
     L.append("Source: existing ledgers + 1min path checks. Conventions: $2/pt, tick $0.50 "
-             "($0.25/pt), comm $0.75/side, cost 1.5 tick (0.375 pt slip per leg). "
+             "($0.25/pt), comm $0.50/side, slip 0.4 tick (0.10 pt = $0.20 per leg). "
              "No strategy re-run; no module modified.\n")
 
     L.append("## 1. Cost drag (the primary suspect)\n")
@@ -283,7 +283,7 @@ def main() -> int:
     L.append("## 6. Execution / cost assumption check\n")
     L.append("- Both freqs use the same engine path (`run_second_push_opt`): entry on a 1min "
              "break of the confirmed push1 extreme, adverse slip `slip_ticks*tick` on entry and "
-             "exit, comm $0.75/side/contract; `freq_minutes` only changes the decision-bar "
+             "exit, comm $0.50/side/contract; `freq_minutes` only changes the decision-bar "
              "segmentation. 5min and 15min are therefore **cost-identical per trade**.\n")
     L.append("- Ledger identity `pnl_usd_net == pnl_pts * $2 * size` holds (verified below); "
              "entry gates read bar `k-1` (last completed) and the zigzag pivot B is confirmed "

@@ -1,3 +1,4 @@
+# Cost model corrected 2026-10-10: base ('1.5t' label retained) = commission $0.50/side + slippage $0.20/side ($1.40 round trip); stress ('3.0t') = $0.50/side + $1.50/side slippage.
 # T1' sealed config - IN-SAMPLE ONLY (do not touch OOS)
 sealed_is_start: '2019-05-06'
 sealed_is_end: '2023-12-31'
@@ -15,12 +16,12 @@ params:
   depth_mult: 1.0
   atr_pct: 90
 is_metrics:
-  PF: 1.089365
+  PF: 1.098655
   hit_rate: 0.318584
   n_trades: 226
-  MAR: 0.086385
-  MaxDD: 0.124091
-  CAGR: 0.010720
+  MAR: 0.096563
+  MaxDD: 0.121599
+  CAGR: 0.011742
   expectancy_R: 0.208791
   time_in_market: 0.110060
 acceptance:
@@ -28,4 +29,4 @@ acceptance:
   win_ge_30pct: True
   n_ge_150: True
   plateau: False
-grid_hash: 6555164b758331cdf874bf17f3c31562
+grid_hash: c2d5565f2af238f3770e5d8d06a34c05

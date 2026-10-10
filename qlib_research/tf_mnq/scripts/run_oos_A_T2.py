@@ -33,14 +33,14 @@ from tf_mnq.strategies_v2 import build_signals_v2, regime_series, run_ema_struct
 RESULTS_DIR = os.path.join(_PKG_ROOT, "results")
 IS_START, IS_END = "2019-05-06", "2023-12-31"
 OOS_START, OOS_END = "2024-01-01", "2026-10-02"
-COST = CostCfg(slip_ticks=1.5, commission_per_side=0.75, tick=0.25, point_value=2.0)
-COST3 = CostCfg(slip_ticks=3.0, commission_per_side=0.75, tick=0.25, point_value=2.0)
+COST = CostCfg(slip_ticks=0.4, commission_per_side=0.5, tick=0.25, point_value=2.0)
+COST3 = CostCfg(slip_ticks=3.0, commission_per_side=0.5, tick=0.25, point_value=2.0)
 PV, ACCOUNT = 2.0, 50000.0
 ANCH = dict(pivot_n=2, buf=0.25, floor_mult=2.0, act_mult=0.0,
             regime_confirm=0, breakeven_atr=None)
-IS_EXPECT = dict(n=774, PF=1.1854617937806449, win=0.36175710594315247,
-                 net=4895.9267484771735, MaxDD=1361.8885113636861,
-                 Sharpe=0.724259381747148)
+IS_EXPECT = dict(n=774, PF=1.2020002275705615, win=0.36563307493540054,
+                 net=5282.9267484771735, MaxDD=1327.8885113636861,
+                 Sharpe=0.7817429964135557)
 DD_GATE = 1500.0
 Z = 1.6  # gate 5 multiplier
 
@@ -204,6 +204,8 @@ def main() -> int:
     L = []
     L.append("\n---\n")
     L.append("## OOS verdict — A_T2 (single pre-registered touch, 2024-01-01..2026-10-02)\n")
+    L.append("> OOS re-evaluated 2026-10-10 under corrected cost (commission $0.50/side + "
+             "slippage $0.20/side); same frozen config, no re-selection.\n")
     L.append(f"- IS reproduction: **{'OK' if ok else 'FAILED'}** "
              f"(n={m_is['n']}, PF {m_is['PF']:.3f}, win {m_is['win']:.3f}, "
              f"net ${m_is['net_profit_usd']:.2f}, MaxDD ${m_is['MaxDD_usd_1c']:.2f}, "

@@ -131,6 +131,8 @@ qlib_research/data_stage/
 qlib_research/tf_mnq/cache/
 qlib_research/mlruns/
 qlib_research/.venv/
+qlib_research/tf_mnq/results_backup_costbefore/
 
 # Archived freqtrade workspace (project focus: qlib research)
 archive/
+

@@ -7,7 +7,8 @@ Contract
 * Long-only by default; a ``-1`` target is treated as flat unless
   ``allow_short=True``.
 * Slippage is applied adversely on both entry and exit; commission is charged
-  per side per contract.
+  per side per contract. Cost model (2026-10-10): commission $0.50/side
+  ($1.00 open+close) and slippage $0.20/side (0.4 tick) -> $1.40 round trip.
 
 MNQ contract: tick = 0.25 points ($0.50), point_value = $2.00/point.
 """
@@ -22,8 +23,10 @@ import pandas as pd
 
 @dataclass
 class CostCfg:
-    slip_ticks: float = 1.5
-    commission_per_side: float = 0.75
+    # Cost model corrected 2026-10-10: commission $1.00 open+close ($0.50/side) and
+    # slippage $0.20/side (avg; not every order slips) -> 0.4 tick * $0.50/tick.
+    slip_ticks: float = 0.4
+    commission_per_side: float = 0.5
     tick: float = 0.25
     point_value: float = 2.0
 

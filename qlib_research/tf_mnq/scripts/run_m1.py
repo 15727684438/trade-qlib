@@ -23,7 +23,7 @@ from tf_mnq import rolls  # noqa: E402
 RESULTS_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results"
 )
-SLIPS = (1.0, 1.5, 3.0)
+SLIPS = (0.4, 1.0, 3.0)
 
 
 def gate_separation(bars60: pd.DataFrame, feat: pd.DataFrame, horizons=(12, 24)) -> pd.DataFrame:
@@ -92,7 +92,7 @@ def main() -> int:
     metric_rows = []
     results = {}
     for slip in SLIPS:
-        cost = CostCfg(slip_ticks=slip, commission_per_side=0.75, tick=0.25, point_value=2.0)
+        cost = CostCfg(slip_ticks=slip, commission_per_side=0.5, tick=0.25, point_value=2.0)
         for name, res in (
             ("B1", run_target_position(bars60, target_b1, cost, allow_short=False, atr=atr)),
             ("B0", buy_and_hold(bars60, cost, atr=atr)),
@@ -106,7 +106,7 @@ def main() -> int:
 
     # ---- sanity: B0 total return ~= last/first - 1 net of one round trip ---- #
     first, last = float(bars60["close"].iloc[0]), float(bars60["close"].iloc[-1])
-    c0 = CostCfg(slip_ticks=1.5, commission_per_side=0.75, tick=0.25, point_value=2.0)
+    c0 = CostCfg(slip_ticks=0.4, commission_per_side=0.5, tick=0.25, point_value=2.0)
     slip_pts = c0.slip_ticks * c0.tick
     expected = (
         last / first
@@ -114,12 +114,12 @@ def main() -> int:
         - 2.0 * c0.commission_per_side / (first * c0.point_value)
         - 2.0 * slip_pts / first
     )
-    got = results[("B0", 1.5)][1]["total_return"]
+    got = results[("B0", 0.4)][1]["total_return"]
     assert abs(got - expected) < 1e-9, f"B0 sanity failed: got {got}, expected {expected}"
     print(f"B0 sanity OK: total_return {got:.6f} == {expected:.6f}\n")
 
     # ---- sanity: B1 trade ledger reconciles with its equity curve ---- #
-    res_b1, _ = results[("B1", 1.5)]
+    res_b1, _ = results[("B1", 0.4)]
     ledger = sum(t["pnl_usd_net"] for t in res_b1["trades"])
     equity_delta = (float(res_b1["equity"].iloc[-1]) - float(res_b1["equity"].iloc[0])) * res_b1[
         "capital"
@@ -149,7 +149,7 @@ def main() -> int:
         return float(row["mean_fwd_path_eff"].iloc[0]) if len(row) else float("nan")
 
     mono = all(eff(h, 1) > eff(h, 0) for h in (12, 24))
-    m15 = results[("B1", 1.5)][1]
+    m15 = results[("B1", 0.4)][1]
     m30 = results[("B1", 3.0)][1]
     pass_base = np.isfinite(m15["MAR"]) and m15["MAR"] > 0
     pass_stress = np.isfinite(m30["MAR"]) and m30["MAR"] > 0

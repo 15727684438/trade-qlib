@@ -44,7 +44,7 @@ run_breakout = _m1b.run_breakout
 
 RESULTS_DIR = os.path.join(_PKG_ROOT, "results")
 CONFIG_DIR = os.path.join(_PKG_ROOT, "config")
-COST = CostCfg(slip_ticks=1.5, commission_per_side=0.75, tick=0.25, point_value=2.0)
+COST = CostCfg(slip_ticks=0.4, commission_per_side=0.5, tick=0.25, point_value=2.0)
 FREQ = "15min"
 
 PIVOT_N = [2, 3]
@@ -317,6 +317,7 @@ def main() -> int:
     seal_path = os.path.join(CONFIG_DIR, "t1_sealed_15min.yaml")
     with open(seal_path, "w", encoding="utf-8") as fh:
         fh.write("# T1' sealed config - 15min decisions, IN-SAMPLE ONLY (do not touch OOS)\n")
+        fh.write("# Cost model corrected 2026-10-10: base ('1.5t' label retained) = commission $0.50/side + slippage $0.20/side ($1.40 round trip); stress ('3.0t') = $0.50/side + $1.50/side slippage.\n")
         fh.write(f"sealed_is_start: '{IS_START}'\n")
         fh.write(f"sealed_is_end: '{IS_END}'\n")
         fh.write("freq: 15min\n")

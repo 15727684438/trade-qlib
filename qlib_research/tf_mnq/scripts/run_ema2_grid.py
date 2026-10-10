@@ -33,8 +33,8 @@ from tf_mnq.strategies_v2b import build_signals_v2b, run_ema2_struct  # noqa: E4
 
 RESULTS_DIR = os.path.join(_PKG_ROOT, "results")
 IS_START, IS_END = "2019-05-06", "2023-12-31"
-COST = CostCfg(slip_ticks=1.5, commission_per_side=0.75, tick=0.25, point_value=2.0)
-COST3 = CostCfg(slip_ticks=3.0, commission_per_side=0.75, tick=0.25, point_value=2.0)
+COST = CostCfg(slip_ticks=0.4, commission_per_side=0.5, tick=0.25, point_value=2.0)
+COST3 = CostCfg(slip_ticks=3.0, commission_per_side=0.5, tick=0.25, point_value=2.0)
 PV, ACCOUNT = 2.0, 50000.0
 DD_HARD = 1500.0
 
@@ -206,7 +206,9 @@ def main() -> int:
              "structurally (pivot n=2, buf 0.25 ATR, ratchet-only, floor=initial stop) "
              "+ regime-break exit.\n")
     L.append("- Fill model: canonical adverse slip = slip_ticks*tick on entry/stop/regime/"
-             "partial; partial carries >=1 tick. Costs: $0.75/side, $2/pt, tick $0.50.\n")
+             "partial; partial carries >=1 tick. Costs: $0.50/side + $0.20/side slip, $2/pt, tick $0.50.\n")
+    L.append("- Cost model corrected 2026-10-10: base ('1.5t') = $0.50/side comm + $0.20/side slip; "
+             "stress ('3.0t') = $0.50/side + $1.50/side slip.\n")
     L.append(f"- Acceptance: rank by net_profit_usd@1.5t among configs with "
              f"MaxDD_usd@2c <= ${DD_HARD:.0f} at BOTH 1.5t and 3.0t.\n")
     L.append(f"- **Verdict: {'BEST = ' + best if best else 'NONE meets MaxDD gate at both cost levels'}**\n")
@@ -246,7 +248,7 @@ def main() -> int:
         L.append("**No config satisfies the MaxDD@2c<=$1500 gate at both cost levels.**\n")
     L.append("## Anchor check (STEP 1)\n")
     L.append("- `run_ema2_struct` with shorts+partial disabled and legacy fills reproduces "
-             "frozen A_T2 trade-for-trade (n=774, PF 1.185, net $4895.93, MaxDD $1361.89, "
+             "frozen A_T2 trade-for-trade (n=774, PF 1.202, net $5282.93, MaxDD $1327.89, "
              "max per-trade diff $0.00) — see `results/ema2_anchor_check.csv`.\n")
     L.append("- OOS NOT touched.")
     L.append("")

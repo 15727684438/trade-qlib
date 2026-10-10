@@ -41,7 +41,7 @@ RESULTS_DIR = os.path.join(_PKG_ROOT, "results")
 IS_START, IS_END = "2019-05-06", "2023-12-31"
 OOS_START, OOS_END = "2024-01-01", "2026-10-02"
 FREQ = "15min"
-COST = CostCfg(slip_ticks=1.5, commission_per_side=0.75, tick=0.25, point_value=2.0)
+COST = CostCfg(slip_ticks=0.4, commission_per_side=0.5, tick=0.25, point_value=2.0)
 PV = 2.0          # $/point/contract
 ACCOUNT = 50000.0
 DD_CAP = 1500.0    # hard user constraint

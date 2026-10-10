@@ -111,6 +111,8 @@ def main() -> int:
              "confirming bar; pct: threshold = x% of the extreme price). Alternating "
              "legs; every consecutive 5-leg window is an impulse sequence with "
              "P1=leg0, P2=leg2, P3=leg4. Overlapping windows are used (descriptive).\n")
+    L.append("Cost model corrected 2026-10-10: commission $0.50/side ($1.00 open+close) "
+             "+ slippage $0.20/side; '1.5t' label retained, stress '3.0t' = $1.50/side slip.\n")
 
     def fmt(v, nd=3):
         return "—" if v is None or (isinstance(v, float) and not np.isfinite(v)) else f"{v:.{nd}f}"

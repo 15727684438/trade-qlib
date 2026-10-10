@@ -2,6 +2,8 @@
 
 Causal zigzag: a swing pivot is confirmed only after price reverses by >= threshold from the running extreme (ATR-k: threshold = k*ATR at the confirming bar; pct: threshold = x% of the extreme price). Alternating legs; every consecutive 5-leg window is an impulse sequence with P1=leg0, P2=leg2, P3=leg4. Overlapping windows are used (descriptive).
 
+Cost model corrected 2026-10-10: commission $0.50/side ($1.00 open+close) + slippage $0.20/side; '1.5t' label retained, stress '3.0t' = $1.50/side slip.
+
 ## Direct answer — P(2nd push ≈ 1st push length)
 
 15min, across impulse definitions (r2 = P2/P1):
@@ -70,31 +72,6 @@ Causal zigzag: a swing pivot is confirmed only after price reverses by >= thresh
 
 ---
 
-## TASK B — second-push prototype (15min decisions / 1min fills)
-
-Rule: after push1 (causal zigzag leg0) + correction (leg1), enter on the break of the push1 extreme (start of push2); target = entry +/- f*P1; stop beyond the correction extreme, risk floored at 2.0*ATR; one trade per impulse sequence (no 3rd push). $0.75/side, $2/pt, tick $0.50.
-
-**Best @1c<=$1500 (1.5t)**: NONE
-
-**Best @2c<=$1500 at BOTH costs**: NONE
-
-| tag | cost | n | PF | win | exp$ | net$ | Sharpe$ | MaxDD1c$ | MaxDD2c$ | worst$ | target | stop | end | L n/PF/net$ | S n/PF/net$ |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| k1.5_f0.618 | 1.5t | 4535 | 1.006 | 0.575 | $0.27 | $1240 | 2.07 | $10268 | $20535 | $-508 | 2608 | 1927 | 0 | 2288/1.078/$7940 | 2247/0.940/$-6701 |
-| k1.5_f0.618 | 3.0t | 4530 | 0.980 | 0.572 | $-0.95 | $-4308 | 1.34 | $11468 | $22936 | $-510 | 2589 | 1941 | 0 | 2277/1.051/$5298 | 2253/0.915/$-9607 |
-| k1.5_f0.75 | 1.5t | 4185 | 1.037 | 0.528 | $1.97 | $8225 | 2.91 | $11922 | $23844 | $-508 | 2209 | 1976 | 0 | 2120/1.087/$9310 | 2065/0.990/$-1085 |
-| k1.5_f0.75 | 3.0t | 4190 | 1.013 | 0.525 | $0.72 | $3000 | 2.02 | $9381 | $18763 | $-510 | 2200 | 1990 | 0 | 2122/1.058/$6336 | 2068/0.971/$-3335 |
-| k1.5_f1.0 | 1.5t | 3584 | 1.009 | 0.449 | $0.57 | $2056 | 1.15 | $7257 | $14515 | $-574 | 1609 | 1975 | 0 | 1809/1.041/$4610 | 1775/0.978/$-2554 |
-| k1.5_f1.0 | 3.0t | 3586 | 0.994 | 0.449 | $-0.38 | $-1366 | 0.88 | $10448 | $20896 | $-576 | 1609 | 1977 | 0 | 1813/1.020/$2288 | 1773/0.969/$-3654 |
-| k1.0_f1.0 | 1.5t | 5579 | 0.987 | 0.497 | $-0.73 | $-4053 | 1.11 | $8862 | $17724 | $-588 | 2775 | 2804 | 0 | 2876/1.042/$6432 | 2703/0.933/$-10484 |
-| k1.0_f1.0 | 3.0t | 5596 | 0.961 | 0.493 | $-2.23 | $-12455 | 3.31 | $16221 | $32442 | $-589 | 2757 | 2839 | 0 | 2897/1.008/$1265 | 2699/0.914/$-13719 |
-| k2.0_f1.0 | 1.5t | 2182 | 1.068 | 0.459 | $4.96 | $10827 | 2.18 | $15335 | $30670 | $-784 | 1001 | 1181 | 0 | 1114/1.103/$8267 | 1068/1.032/$2560 |
-| k2.0_f1.0 | 3.0t | 2180 | 1.052 | 0.459 | $3.83 | $8351 | 1.85 | $13897 | $27794 | $-786 | 1000 | 1180 | 0 | 1115/1.085/$6851 | 1065/1.019/$1500 |
-| pct0.5_f1.0 | 1.5t | 1020 | 0.974 | 0.418 | $-3.54 | $-3613 | 0.76 | $18164 | $36328 | $-924 | 426 | 594 | 0 | 522/0.994/$-427 | 498/0.953/$-3186 |
-| pct0.5_f1.0 | 3.0t | 1020 | 0.968 | 0.418 | $-4.43 | $-4521 | 0.76 | $18624 | $37247 | $-926 | 426 | 594 | 0 | 521/0.992/$-587 | 499/0.943/$-3934 |
-
----
-
 ## 5min / 1min — does the effect hold?
 
 Same causal zigzag as above (ATR-k thresholds). Overlapping 5-leg windows; N is descriptive.
@@ -156,3 +133,30 @@ Same causal zigzag as above (ATR-k thresholds). Overlapping 5-leg windows; N is 
 ### Direct answer
 
 **YES — the complementarity holds at 5min** (and is the same shape at 1min). At 5min (ATR k=1.5, N=87864), median P2/P1 rises monotonically as P1 shrinks: P1-low median r2=1.161, mid=1.000, high=0.821; the same monotone pattern holds at 1min (low=1.154, mid=0.984, high=0.833). Small pushes tend to be followed by relatively larger pushes, large pushes by smaller ones.
+
+---
+
+## TASK B — second-push prototype (15min decisions / 1min fills)
+
+Rule: after push1 (causal zigzag leg0) + correction (leg1), enter on the break of the push1 extreme (start of push2); target = entry +/- f*P1; stop beyond the correction extreme, risk floored at 2.0*ATR; one trade per impulse sequence (no 3rd push). $0.50/side + $0.20/side slip, $2/pt, tick $0.50.
+
+Cost model corrected 2026-10-10: commission $0.50/side ($1.00 open+close) + slippage $0.20/side; '1.5t' label retained, stress '3.0t' = $1.50/side slip.
+
+**Best @1c<=$1500 (1.5t)**: NONE
+
+**Best @2c<=$1500 at BOTH costs**: NONE
+
+| tag | cost | n | PF | win | exp$ | net$ | Sharpe$ | MaxDD1c$ | MaxDD2c$ | worst$ | target | stop | end | L n/PF/net$ | S n/PF/net$ |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| k1.5_f0.618 | 1.5t | 4539 | 1.045 | 0.578 | $2.10 | $9513 | 3.57 | $15523 | $31046 | $-507 | 2623 | 1916 | 0 | 2293/1.116/$11681 | 2246/0.980/$-2167 |
+| k1.5_f0.618 | 3.0t | 4530 | 0.991 | 0.572 | $-0.45 | $-2043 | 1.49 | $10697 | $21394 | $-510 | 2589 | 1941 | 0 | 2277/1.063/$6437 | 2253/0.925/$-8480 |
+| k1.5_f0.75 | 1.5t | 4186 | 1.069 | 0.532 | $3.56 | $14889 | 4.12 | $17185 | $34370 | $-507 | 2225 | 1961 | 0 | 2116/1.125/$13076 | 2070/1.016/$1813 |
+| k1.5_f0.75 | 3.0t | 4190 | 1.023 | 0.525 | $1.22 | $5095 | 2.39 | $10173 | $20346 | $-510 | 2200 | 1990 | 0 | 2122/1.068/$7397 | 2068/0.980/$-2301 |
+| k1.5_f1.0 | 1.5t | 3588 | 1.034 | 0.451 | $2.13 | $7628 | 1.96 | $9186 | $18372 | $-573 | 1617 | 1971 | 0 | 1810/1.070/$7649 | 1778/1.000/$-21 |
+| k1.5_f1.0 | 3.0t | 3586 | 1.002 | 0.449 | $0.12 | $427 | 1.04 | $9353 | $18707 | $-576 | 1609 | 1977 | 0 | 1813/1.029/$3195 | 1773/0.976/$-2768 |
+| k1.0_f1.0 | 1.5t | 5588 | 1.018 | 0.502 | $0.97 | $5402 | 1.67 | $7617 | $15233 | $-586 | 2803 | 2785 | 0 | 2891/1.075/$11402 | 2697/0.961/$-6000 |
+| k1.0_f1.0 | 3.0t | 5596 | 0.969 | 0.493 | $-1.73 | $-9657 | 2.50 | $13658 | $27317 | $-588 | 2757 | 2839 | 0 | 2897/1.017/$2713 | 2699/0.922/$-12370 |
+| k2.0_f1.0 | 1.5t | 2186 | 1.075 | 0.456 | $5.50 | $12028 | 2.32 | $15019 | $30038 | $-783 | 996 | 1190 | 0 | 1119/1.113/$9038 | 1067/1.038/$2990 |
+| k2.0_f1.0 | 3.0t | 2180 | 1.059 | 0.459 | $4.33 | $9441 | 2.00 | $14542 | $29084 | $-786 | 1000 | 1180 | 0 | 1115/1.092/$7408 | 1065/1.025/$2033 |
+| pct0.5_f1.0 | 1.5t | 1022 | 0.978 | 0.416 | $-3.04 | $-3102 | 0.74 | $17624 | $35248 | $-922 | 425 | 597 | 0 | 523/1.003/$184 | 499/0.952/$-3286 |
+| pct0.5_f1.0 | 3.0t | 1020 | 0.971 | 0.418 | $-3.93 | $-4011 | 0.77 | $18421 | $36841 | $-925 | 426 | 594 | 0 | 521/0.995/$-326 | 499/0.947/$-3685 |

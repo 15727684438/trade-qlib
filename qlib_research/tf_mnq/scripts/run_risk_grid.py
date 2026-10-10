@@ -41,8 +41,11 @@ IS_START, IS_END = "2019-05-06", "2023-12-31"
 FREQ = "15min"
 SUFFIX = ""
 MD_NAME = "RISK_REDESIGN.md"
-COST = CostCfg(slip_ticks=1.5, commission_per_side=0.75, tick=0.25, point_value=2.0)
-COST3 = CostCfg(slip_ticks=3.0, commission_per_side=0.75, tick=0.25, point_value=2.0)
+COST = CostCfg(slip_ticks=0.4, commission_per_side=0.5, tick=0.25, point_value=2.0)
+COST3 = CostCfg(slip_ticks=3.0, commission_per_side=0.5, tick=0.25, point_value=2.0)
+COST_NOTE = ("Cost model corrected 2026-10-10: base ('1.5t' label retained) = "
+             "commission $0.50/side + slippage $0.20/side ($1.40 round trip); "
+             "stress ('3.0t') = $0.50/side + $1.50/side slippage.")
 PV = 2.0
 ACCOUNT = 50000.0
 DD_GATE = 1200.0      # hard gate 1 (80% of $1500)
@@ -634,7 +637,7 @@ def main() -> int:
             lines.append(f"- (comparison unavailable: {exc})")
     lines.append("")
     with open(os.path.join(RESULTS_DIR, MD_NAME), "w", encoding="utf-8") as fh:
-        fh.write("\n".join(lines))
+        fh.write(COST_NOTE + "\n\n" + "\n".join(lines))
 
     print("=" * 78)
     print(f"SAVED: risk_grid{SUFFIX}.csv, risk_bootstrap{SUFFIX}.csv, "

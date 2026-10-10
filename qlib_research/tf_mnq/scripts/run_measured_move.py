@@ -286,6 +286,10 @@ def _write_markdown(stats, events):
              "dir*D (D_sum variant: close[last] + dir*D_sum). A combination is known "
              "only at the close of its last candle; the forward path is measured from "
              "the **next bar** (reference = next open). OOS (2024+) never touched.\n")
+    L.append("Cost model corrected 2026-10-10: commission $0.50/side ($1.00 open+close) "
+             "+ slippage $0.20/side; '1.5t' label retained, stress '3.0t' = $1.50/side slip. "
+             "(This report is cost-free probabilities; the cost note applies to the "
+             "downstream momentum/MM-performance reports.)\n")
 
     # ---------- base-rate comparison (overall, by freq/tol) ----------
     L.append("## Base-rate comparison (body target)\n")
