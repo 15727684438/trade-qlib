@@ -1,0 +1,31 @@
+# T1' sealed config - IN-SAMPLE ONLY (do not touch OOS)
+sealed_is_start: '2019-05-06'
+sealed_is_end: '2023-12-31'
+direction: long
+context: 'close>EMA50(50) and EMA50.slope3>0'
+trigger: pullback_resumption
+vetoes:
+  - 'VR12 < 1.0'
+  - 'ATR14_percentile(500) <= 90'
+exit: structure_low_stop + context_exit(close<EMA50)
+params:
+  pivot_n: 2
+  buffer_mult: 0.25
+  stop_mult: 1.5
+  depth_mult: 1.0
+  atr_pct: 90
+is_metrics:
+  PF: 1.089365
+  hit_rate: 0.318584
+  n_trades: 226
+  MAR: 0.086385
+  MaxDD: 0.124091
+  CAGR: 0.010720
+  expectancy_R: 0.208791
+  time_in_market: 0.110060
+acceptance:
+  PF_ge_1.5: False
+  win_ge_30pct: True
+  n_ge_150: True
+  plateau: False
+grid_hash: 6555164b758331cdf874bf17f3c31562

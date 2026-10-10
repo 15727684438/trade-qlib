@@ -1,0 +1,16 @@
+# MNQ / qlib research environment (Python 3.11)
+# Install:  python -m pip install -r requirements.txt
+# pyqlib pulls most transitive deps; key pins below reproduce the research env.
+
+pyqlib==0.9.7
+numpy==2.4.6
+pandas==3.0.6
+scipy==1.17.1
+scikit-learn==1.9.1
+lightgbm==4.7.0
+mlflow==3.17.0
+matplotlib==3.11.2
+pyarrow==25.0.1
+tqdm==4.70.1
+PyYAML==6.0.3
+python-dateutil==2.9.0.post0

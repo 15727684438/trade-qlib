@@ -124,3 +124,10 @@ mnq_mes/data/
 
 # OKX API credentials (user-provided, never commit)
 mnq_mes/config/okx_credentials.json
+
+# qlib research: heavy / reproducible artifacts (rebuild via tools/ingest_mnq_1min.py)
+qlib_research/data/
+qlib_research/data_stage/
+qlib_research/tf_mnq/cache/
+qlib_research/mlruns/
+qlib_research/.venv/

@@ -1,0 +1,38 @@
+# T1' sealed config v2 - 15min decisions, IN-SAMPLE ONLY
+sealed_is_start: '2019-05-06'
+sealed_is_end: '2023-12-31'
+freq: 15min
+entry_mode: market
+trigger: donchian_breakout
+donch: 20
+vetoes:
+  - 'VR12 < 1.0'
+  - 'ATR14_percentile(500) <= 90'
+  - 'ATRpct in (18.32, 27.48]'
+  - 'extension in (2.268, 2.68]'
+  - 'pullback_depth in (1.267, 1.456]'
+  - 'hour == 3'
+exit_engine: atr
+stop_mult: 2.5
+is_metrics@1.5t:
+  PF: 1.3285891325548893
+  win: 0.4074427480916031
+  MAR: 1.3278297048617311
+  MaxDD: 0.07086274345880428
+  CAGR: 0.09409365573259665
+  R2: 0.9397367192157701
+  pct_pos12m: 0.9687271062271062
+  n: 1048
+stageE1_metrics@3t:
+  PF: 1.2776430611406997
+  win: 0.3998091603053435
+  MAR: 1.1273130483543738
+  MaxDD: 0.07380310335931817
+  CAGR: 0.0831992014260059
+robustness:
+  R1_lower: 1.1487886799390696
+  R1_pass: True
+  R2_pass: True
+  R3_pass: True
+  R4_pass: True
+  E1_thin: False

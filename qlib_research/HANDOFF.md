@@ -1,0 +1,172 @@
+# MNQ 趋势模型研究 — 交接文档 (HANDOFF)
+
+> 用途：让另一台机器的你（或另一个 AI 会话）能**完整接过本项目上下文**，一个指令即可继续。
+> 最后更新：2026-10-09（审计任务进行中，见 §7）。
+
+---
+
+## 0. 快速开始（一条指令）
+
+在**新机器**上：
+
+```powershell
+git clone https://github.com/15727684438/trade-qlib.git D:\freqtrade
+cd D:\freqtrade
+powershell -ExecutionPolicy Bypass -File qlib_research\bootstrap.ps1 -RawCsv "D:\BaiduNetdiskDownload\@MNQ#C_1min_20261003.csv"
+```
+
+`bootstrap.ps1` 会：建 venv → 装依赖 → 设 `MLFLOW_ALLOW_FILE_STORE=true` → 由原始 1min CSV 重建 qlib 数据 → 打印"下一步"命令。
+若原始 CSV 不在原路径，用 `-RawCsv` 指向它；没有该 CSV 需先从百度网盘重新下载。
+
+---
+
+## 1. 目标与验收
+
+- **目标**：部署 qlib，研究 **MNQ（微型纳斯达克期货）日内/趋势模型**：过滤震荡，用移动跟随结构低点止损。在**受控回撤**下最大化回报。
+- **回测口径（用户，强制）**：账户 `$50,000`；固定 **1 或 2 手** MNQ（`$2/点/手`）；**MaxDD 硬约束 ≤ $1,500**（=3%）。在满足该约束下最大化回报。
+- **验收目标（原始）**：胜率 ≥30%、盈利因子 PF ≥1.5。**当前建议改框**（见 §6）：PF ≥1.35 + Sharpe ≥1.2 + MaxDD ≤12% + R²≥0.75 + %pos12m≥0.70，用 1.5–2× 杠杆兑现"冲劲"。
+- **样本切分（铁律）**：IS = `2019-05-06 .. 2023-12-31`（冻结）；OOS = `2024-01-01 .. 2026-10-02`（**仅最终一次性触碰，不得调参**）。
+
+---
+
+## 2. 结论摘要（当前进度）
+
+- qlib 已部署并由我完成 MNQ 1min→多周期入库（0 缺失，行数核对一致）；LightGBM 样例全链路跑通（IC=0.090 / ICIR=0.63）。
+- 决策周期：**15min 决策 + 1min 撮合**（曾用 60min；届时也需回测 5min/1min）。
+- 15min 最终封存配置 `tf_mnq\config\t1_sealed_15min.yaml`：
+  - **@1.5 tick**：**PF 1.3286**、胜率 0.407、MAR 1.328、MaxDD 0.0709、n 1048、CAGR 0.094、Sharpe 1.544、R²(log eq) 0.940、%pos12m 0.969。
+  - @3 tick：PF 1.2776。
+  - 稳健性：R1 自助法 PF 90%CI 下界 1.1488（过）；R2 子年度 PF {1.361, 1.767, 0.990, 1.418}（3/4 过）；R3 邻域过；R4 n≥400 过。
+- **验收**：PF≥1.35 **差 0.021 未达**；PF≥1.5 未达。
+- **诚实概率（oracle）**：IS 达 PF≥1.5 约 20–30%；OOS 保 PF≥1.35 约 10–15%。
+
+### 过拟合审计结论（已完成，决定性，2026-10-09）
+> 结论：**该冻结 15min 策略样本外不达标，且 1 手时样本内 MaxDD 就已超预算。暂不上线。**
+
+- **USD 口径（IS，@1.5t）**：1 手 MaxDD **$1,736**、2 手 **$3,472** → **均违反 ≤ $1,500 硬约束**（即使样本内）。点数为 868.10 pt。
+- **OOS（2024-01-01..2026-10-02，一次性触碰，未调参）**：PF **1.1337**（预注册线 1.15 → **FAIL**）、胜率 0.388、n 704、MaxDD_norm 0.1047、Sharpe 0.761、R²(log eq) 0.702、expectancy **+$7.61/笔（>0 PASS）**、1 手 MaxDD **$4,877**。**OOS 总判定：FAIL。** 子期 PF：2024=1.408、**2025=1.007**、2026YTD=1.094（2025 边际消失）。
+- **窄带否决消融**：真实增量 IS +0.094 → **OOS 仅 +0.025（保留 26%）**；"平滑"替代把样本从 1048 砍到 313，不可用。→ **+0.09 主要是 IS 假象。**
+- **留一年重推坏桶（LOYO）**：2020/2021/2022/2023 持有年 PF 边际 **全部为负**（−0.078/−0.016/−0.018/−0.096）→ 窄带否决不跨年泛化。
+- **随机入场安慰剂（500 次，数量匹配）**：真实 PF 1.329 = **第 100 百分位**（安慰剂 max 1.208）→ **突破入场择时本身有真实信号**（不是止损/跟踪的假象）。
+- **多重检验校正**：~70 次试验，期望最大 Sharpe(零假设)=2.723 > 观测 1.545；**DSR=0.0054（p=0.995）**，Bonferroni p≈0.105 / Šidák≈0.0997 → **IS 高 Sharpe/R² 经多重检验校正后不显著**。
+- **结论**：真实=突破/趋势择时；过拟合=4 条窄带否决 + 被选择抬高的一切 IS 头条指标（R²0.94/Sharpe1.55/PF1.33/MAR1.33）。
+- **推荐续做基线**：去掉 4 条窄带否决的**简化基础配置**（`breakout + 2.5×ATR + {VR<1 & ATRpct≤90}`；OOS PF 1.109），但**仍不过 OOS 线与风控预算** → 必须先**重做止损/仓位/风险模型**（或改品种/规模）再谈上线。证据文件：`tf_mnq/results/audit_*.csv`。
+
+---
+
+## 3. 关键决策与规则（不可违反）
+
+1. **选择协议**：只用**真实执行下、扣净成本**的交易分布排序；固定持有期 `canonical_R` 仅做候选初筛（D2 失败根因就是误用初筛指标做终选）。
+2. **回测引擎**：qlib 只作**数据层 + ML CV**；回测用**自建 O(n) 事件引擎**（qlib 回测无止损单语义）。见 `tf_mnq/engine.py`。
+3. **成本口径**：MNQ tick=0.25pt=`$0.50`；`$2/点/手`；基准 **1.5 tick**、压力 **3 tick**；commission `$0.75/边`。
+4. **系统设计 T1′**：慢上下文 `close>EMA50(50) & EMA50.slope3>0`（long-only）+ 事件触发（Donchian-20 突破 or 回调恢复）+ 入场否决器 + 结构低点/ATR 移动止损。主用 **2.5×ATR 移动止损**（结构止损在 15min 因枢轴噪声退役；5min 枢轴备选也退役）。
+5. **时间纪律**：IS/OOS 冻结；OOS 只准一次触碰、不得据其调参。
+6. **R² 澄清**：`r2_log_equity_vs_time = R² of polyfit(t, log(equity), 1)`，是**曲线平滑度**指标，**不是过拟合指标**。不要用 R² 判过拟合；但"在 IS 上按含平滑度指标选参"本身是选择偏差。
+7. **已知过拟合红线**：Stage B 加的 4 个否决器是**单十分位窄带**（`ATRpct∈(18.32,27.48]`、`extension∈(2.268,2.68]`、`pullback_depth∈(1.267,1.456]`、`hour==3`），+0.09 PF 主要来自砍掉约 254 笔。窄带**尚未**纳入 R3 邻域检验 —— 正在专项审计（§7）。
+
+---
+
+## 4. 架构与文件地图
+
+研究主包 `qlib_research/`：
+
+| 文件 | 作用 |
+|---|---|
+| `tf_mnq/data.py` | 唯一与 qlib 交互处；`load_bars(freq)` 读 qlib → 缓存 `tf_mnq/cache/{freq}.parquet`。**含 `_DATA_URI`（qlib 数据目录）**。 |
+| `tf_mnq/features.py` | 特征：EMA50/slope、Donchian、ATR、VR、extension、pullback_depth 等。 |
+| `tf_mnq/engine.py` | O(n) 事件回测引擎（含移动止损、成本、撮合）。 |
+| `tf_mnq/strategies.py` | 策略 T1′ 构建（上下文+触发+否决+止损）。 |
+| `tf_mnq/breakout.py` | Donchian 突破/事件触发相关。 |
+| `tf_mnq/analytics.py` | 指标：PF、MAR、MaxDD、R²(log eq)、%pos12m、TIM、bootstrap 等。 |
+| `tf_mnq/rolls.py` | 移仓诊断（结论：数据为**后复权 BACK-ADJUSTED**）。 |
+| `tf_mnq/scripts/run_m1.py`, `run_m1b_diagnostics.py`, `run_m1b15_diagnostics.py` | M1 / M1b(60min) / M1b15(15min) 诊断 D0–D7。 |
+| `tf_mnq/scripts/run_m2.py`, `run_m2_15min.py`, `run_m2_report.py` | T1′ 构建 / 平台网格 / 封存与全指标图。 |
+| `tf_mnq/scripts/run_m3_stages.py` | Stage 0/A/B/C + R1–R4 + E1 + 封存逻辑。 |
+| `tf_mnq/config/t1_sealed_15min.yaml` | **当前封存的 15min 最终参数 + IS 指标 + 稳健性 + 窄带否决桶**。 |
+| `tf_mnq/config/t1_sealed.yaml` | 早期 60min 封存。 |
+| `tf_mnq/results/*.csv`, `results/figs/*.png` | 全部指标/交易/曲线与图（`B2g_equity.png` 等）。 |
+| `tools/dump_bin.py` | 官方 qlib bin 生成器（`dump_all`）。 |
+| `tools/ingest_mnq_1min.py` | 原始 1min CSV → staging → qlib bin（1min/5min/15min/60min/day）。 |
+| `tools/verify_mnq.py` / `inspect_source.py` | 数据核验 / 源检查。 |
+| `tools/prepare_qlib_data.py` | 旧：从 freqtrade `mnq_mes/data` 生成 staging（非本主链）。 |
+
+旧规则策略（基线，供参考）：`D:\freqtrade\mnq_mes\src\mrind.py`、`mnq_mes\strategies\regime_range_trend.py`（基线 **−86.2%**；Wilder 口径来源）。
+
+---
+
+## 5. 数据与重建
+
+- **原始源**：`D:\BaiduNetdiskDownload\@MNQ#C_1min_20261003.csv`（2,610,814 根 1min，2019-05-05 18:04 ~ 2026-10-02 17:00，美东时间；无缺失/重复，OHLC 一致）。**192MB，超出 GitHub 限制，不随仓库分发**，新机器需从百度网盘重新下载（或用 `-RawCsv` 指向已有路径）。
+- **qlib 数据**：`qlib_research/data/mnq`（本机 `D:\qlib_research\data\mnq`），频率 1min/5min/15min/60min/day；行数 `2610814 / 526104 / 177122 / 45727 / 1918`；`instruments/all.txt` = `MNQ 2019-05-06 2026-10-02`。**约 200MB，gitignore，不入库**，由脚本重建。
+- **重建命令**：
+  ```powershell
+  D:\qlib_research\.venv\Scripts\python.exe D:\qlib_research\tools\ingest_mnq_1min.py
+  ```
+  依赖 `tools/dump_bin.py`。重建后建议核验行数。
+
+---
+
+## 6. 验收建议与风险预算
+
+- 审计前 IS PF 1.3286 距 1.35 仅差 0.021；审计后判定该头条指标被选择抬高，**不宜作为准入**。
+- **MaxDD 美元换算（已核实）**：`MaxDD_points(868.10) × $2/手 × 手数`。1 手 = **$1,736**、2 手 = **$3,472**（IS）；OOS 1 手 = **$4,877**。点数的 0.0709 "归一化"回撤不是对 $50k 的占比。
+- **现实结论**：本项目**每手风险（IS 868 pt / OOS ~2,439 pt）天然超过 3%–$50k 预算**。要在 ≤$1,500 内运行，只能：① 降低单笔风险（更近的止损/更小的 ATR 倍数/更小仓位粒度 → MNQ 最小即 1 手，粒度受限）；② 改品种（如 MES）或增大账户；③ 放弃该策略。**先解决风险模型，再谈回报最大化。**
+- 若仍要"控回撤最大化回报"，须以**风险定仓**（每笔风险 ≈ 账户 1%=$500 → 每笔止损宽度决定手数）替代固定 1/2 手，并把 MaxDD_usd 作为硬约束逐配置校验。
+
+---
+
+## 7. 当前状态与待办
+
+### 已完成
+- qlib 部署验证；MNQ 多周期入库核验。
+- M1 / M1b / M1b15 诊断；选择协议修复（改按实际执行排序）。
+- Stage 0/A/B/C/E 完成；15min 配置封存（§2）。
+- 功能日志已追加：`C:\Users\caibo\OneDrive\桌面\泰豪\功能日志\20261009fri.md`。
+
+### 已完成（过拟合审计，见 §2 结论）
+- 新增 `tf_mnq/scripts/run_audit_overfitting.py`（6 项审计，无 OOS 调参）；产出 `results/audit_*.csv`（`audit_usd_metrics.csv` / `audit_oos_metrics.csv` / `audit_ablation.csv` / `audit_loyo.csv` / `audit_placebo*.csv` / `audit_multiple_testing.csv` / `audit_trades_*_full.csv`）。
+- 修复 `tf_mnq/breakout.py` 缺失的 `def run_structure_stop_ff(` 函数头（原本语法错误、模块不可导入）。
+- 结论：**OOS FAIL，MaxDD 预算超限，窄带否决过拟合**（详见 §2）。
+
+### 待办（按优先级）
+1. **重做风险/仓位模型（最高优先）**：现每手 IS 868pt / OOS ~2439pt 超过 3%–$50k 预算。方向：更近的止损/更小 ATR 倍数、风险定仓（每笔 ≈1% = $500，按止损宽度换算手数）、或换品种（MES）/增大账户。目标：`MaxDD_usd ≤ $1,500` 为硬约束。
+2. **回退到简化基础配置**（去 4 条窄带否决）作为诚实基线，在其上重做退出/风控。
+3. 周期扫描 **15 / 5 / 1min** × {固定 1/2 手, 风险定仓}，在 `MaxDD_usd ≤ $1500` 下选回报最大者，出美元净值曲线。
+4. 若有新候选，再做**一次**预注册 OOS 触碰 + 多重检验校正。
+
+### 若另一台机器续跑
+- 直接运行审计脚本：`<venv>\python.exe qlib_research\tf_mnq\scripts\run_audit_overfitting.py`（会复现 §2 全部结论，约 163s）。
+- 路径已可移植：`tf_mnq/data.py` 与 `tools/ingest_mnq_1min.py` 已改为**环境变量优先 + 仓库相对默认**（见 §8）。
+
+---
+
+## 8. 可移植性（换机器必读）
+
+已改造为**环境变量优先 + 仓库相对默认**，换机器无需改代码：
+
+- `tf_mnq/data.py`：`_DATA_URI = os.environ.get("MNQ_QLIB_URI") or <repo>/qlib_research/data/mnq`。
+- `tools/ingest_mnq_1min.py`：`MNQ_RAW_CSV` / `MNQ_STAGE_DIR` / `MNQ_QLIB_DIR`（未设时回退到仓库内相对路径，原始 CSV 默认仍指百度网盘下载路径）。
+- `tools/prepare_qlib_data.py`：旧链（非主链），仍含本机绝对路径，暂未改。
+
+环境变量示例：
+```powershell
+$env:MNQ_QLIB_URI   = "D:\freqtrade\qlib_research\data\mnq"
+$env:MNQ_RAW_CSV    = "D:\BaiduNetdiskDownload\@MNQ#C_1min_20261003.csv"
+```
+
+---
+
+## 9. 环境
+
+- Python `3.11.2`；`pyqlib==0.9.7`、`numpy==2.4.6`、`pandas==3.0.6`、`lightgbm==4.7.0`、`scikit-learn==1.9.1`、`mlflow==3.17.0`、`matplotlib==3.11.2`、`pyarrow==25.0.1`。
+- **`MLFLOW_ALLOW_FILE_STORE=true`**（mlflow 3.x 默认禁文件后端）。
+- venv 路径（本机）`D:\qlib_research\.venv`；不入库，由 `bootstrap.ps1` 重建。
+
+---
+
+## 10. 风险与诚实结论
+
+- **该策略当前不可上线**：OOS PF 1.134 < 预注册 1.15，2025 PF≈1.007，OOS 1 手 MaxDD **$4,877**；IS 1 手 MaxDD 也已 **$1,736 > $1,500**。
+- **真实的部分**：Donchian 突破/趋势择时（安慰剂第 100 百分位，max 1.208 < 真实 1.329）。
+- **过拟合的部分**：4 条窄带否决（OOS 仅保留 26%，LOYO 四年全负）+ 被选择抬高的 IS 头条指标（R²0.94/Sharpe1.55/PF1.33/MAR1.33；多重检验校正后不显著）。
+- **正确的下一步**：不是继续追回报，而是**重做止损/仓位/风险模型**（把每手点数风险压进 $1,500 预算）或用简化基础配置从零重构风控。详见 §6/§7。
