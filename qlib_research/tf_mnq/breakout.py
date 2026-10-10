@@ -18,6 +18,19 @@ import pandas as pd
 from .engine import CostCfg
 
 
+_DW_CACHE = {}
+
+
+def _day_week_arrays(idx):
+    """Cached (day, iso-week) numpy keys for the breaker (avoids recompute)."""
+    key = (id(idx), len(idx), int(idx[0].value), int(idx[-1].value))
+    hit = _DW_CACHE.get(key)
+    if hit is None:
+        hit = (idx.normalize().to_numpy(), idx.to_period("W").astype("int64").to_numpy())
+        _DW_CACHE[key] = hit
+    return hit
+
+
 def run_breakout_ex(
     bars: pd.DataFrame,
     atr: pd.Series,
@@ -34,6 +47,9 @@ def run_breakout_ex(
     partial_frac: float = 0.5,
     entry_mode: str = "market",
     retest_bars: int = 3,
+    initial_stop_mult: float = None,
+    ratchet_only: bool = False,
+    breaker: dict = None,
 ) -> dict:
     idx = bars.index
     o = bars["open"].to_numpy(float)
@@ -74,13 +90,33 @@ def run_breakout_ex(
     equity_usd = np.zeros(n)
     trades = []
 
+    # --- risk-first additions (all causal; defaults reproduce legacy behaviour) ---
+    stop = np.nan  # persistent stop level (long-only)
+    breaker_on = breaker is not None
+    br_daily = br_weekly = br_dd = None
+    br_resume = 0.5
+    peak_pts = 0.0
+    brk_active = False
+    dd_active = False
+    day_halt = week_halt = False
+    cur_day = cur_week = None
+    day_ref_pts = week_ref_pts = 0.0
+    n_breaker_blocked = 0
+    halted_days = set()
+    if breaker_on:
+        br_daily = breaker.get("daily")
+        br_weekly = breaker.get("weekly")
+        br_dd = breaker.get("dd")
+        br_resume = float(breaker.get("dd_resume_frac", 0.5))
+        day_arr, week_arr = _day_week_arrays(idx)
+
     def _round_stop(level, side):
         if side > 0:
             return float(np.ceil(level / tick - 1e-9) * tick)
         return float(np.floor(level / tick + 1e-9) * tick)
 
     def _enter(k, side, fill, raw, sig_bar):
-        nonlocal pos, pos_frac, entry_fill, entry_raw, entry_bar, entry_atr, water
+        nonlocal pos, pos_frac, entry_fill, entry_raw, entry_bar, entry_atr, water, stop
         nonlocal partial_done, partial_pnl_pts, realized, signal_bar
         pos = side
         pos_frac = 1.0
@@ -90,12 +126,16 @@ def run_breakout_ex(
         entry_atr = atrn[k]
         signal_bar = sig_bar
         water = h[k] if side > 0 else lo[k]
+        if initial_stop_mult is not None and np.isfinite(entry_atr):
+            stop = entry_fill - side * initial_stop_mult * entry_atr
+        else:
+            stop = -np.inf if side > 0 else np.inf
         partial_done = False
         partial_pnl_pts = 0.0
         realized -= comm  # one side of commission at entry (base behaviour)
 
     def _close(k, raw, reason):
-        nonlocal pos, pos_frac, realized, trades
+        nonlocal pos, pos_frac, realized, trades, stop
         exit_fill = raw - pos * slip
         rem_pts = (exit_fill - entry_fill) * pos * pos_frac
         realized += rem_pts * pv - comm * pos_frac
@@ -111,6 +151,7 @@ def run_breakout_ex(
         })
         pos = 0
         pos_frac = 1.0
+        stop = np.nan
 
     def _do_partial(k, target):
         nonlocal pos_frac, partial_done, partial_pnl_pts, realized
@@ -160,7 +201,14 @@ def run_breakout_ex(
         # ---------------- stop / partial / time ----------------
         if pos != 0 and k > 1 and np.isfinite(atrn[k - 1]):
             atr_prev = atrn[k - 1]
-            stop = water - pos * stop_mult * atr_prev
+            trail = water - pos * stop_mult * atr_prev
+            if ratchet_only and np.isfinite(stop):
+                stop = max(stop, trail) if pos > 0 else min(stop, trail)
+            else:
+                stop = trail
+            if initial_stop_mult is not None and np.isfinite(entry_atr):
+                hard = entry_fill - pos * initial_stop_mult * entry_atr
+                stop = max(stop, hard) if pos > 0 else min(stop, hard)
             if breakeven_atr is not None and np.isfinite(entry_atr):
                 if pos * (water - entry_fill) >= breakeven_atr * entry_atr:
                     be = entry_fill + pos * (slip + 2.0 * comm / pv)
@@ -189,28 +237,63 @@ def run_breakout_ex(
         unreal = pos_frac * pos * (c[k] - entry_fill) * pv if pos != 0 else 0.0
         equity_usd[k] = realized + unreal
 
+        # ---------------- breaker (evaluated at decision close; blocks NEXT-bar entries) ---
+        if breaker_on:
+            eq_pts = equity_usd[k] / pv
+            if eq_pts > peak_pts:
+                peak_pts = eq_pts
+            dkey = day_arr[k]
+            if dkey != cur_day:
+                cur_day = dkey
+                day_ref_pts = (equity_usd[k - 1] / pv) if k > 0 else eq_pts
+                day_halt = False
+            wkey = week_arr[k]
+            if wkey != cur_week:
+                cur_week = wkey
+                week_ref_pts = (equity_usd[k - 1] / pv) if k > 0 else eq_pts
+                week_halt = False
+            if br_daily is not None and (eq_pts - day_ref_pts) <= br_daily:
+                day_halt = True
+            if br_weekly is not None and (eq_pts - week_ref_pts) <= br_weekly:
+                week_halt = True
+            if br_dd is not None:
+                dd_pt = peak_pts - eq_pts
+                if dd_pt > br_dd:
+                    dd_active = True
+                elif dd_pt < br_dd * br_resume:
+                    dd_active = False
+            brk_active = bool(day_halt or week_halt or dd_active)
+            if brk_active:
+                halted_days.add(dkey)
+
         # ---------------- signal detection (next-bar action) ----------------
         if pos == 0 and pending == 0 and limit_side == 0 and k + 1 < n and np.isfinite(don_hi[k]):
             if c[k] > don_hi[k] and not vlong[k]:
-                n_breakouts += 1
-                if entry_mode == "market":
-                    pending = 1
-                    pending_signal_bar = k
+                if brk_active:
+                    n_breaker_blocked += 1
                 else:
-                    limit_side = 1
-                    limit_level = float(don_hi[k])
-                    limit_until = k + retest_bars
-                    limit_signal_bar = k
+                    n_breakouts += 1
+                    if entry_mode == "market":
+                        pending = 1
+                        pending_signal_bar = k
+                    else:
+                        limit_side = 1
+                        limit_level = float(don_hi[k])
+                        limit_until = k + retest_bars
+                        limit_signal_bar = k
             elif allow_short and c[k] < don_lo[k] and not vshort[k]:
-                n_breakouts += 1
-                if entry_mode == "market":
-                    pending = -1
-                    pending_signal_bar = k
+                if brk_active:
+                    n_breaker_blocked += 1
                 else:
-                    limit_side = -1
-                    limit_level = float(don_lo[k])
-                    limit_until = k + retest_bars
-                    limit_signal_bar = k
+                    n_breakouts += 1
+                    if entry_mode == "market":
+                        pending = -1
+                        pending_signal_bar = k
+                    else:
+                        limit_side = -1
+                        limit_level = float(don_lo[k])
+                        limit_until = k + retest_bars
+                        limit_signal_bar = k
 
     if pos != 0:
         _close(n - 1, c[n - 1], "end")
@@ -224,6 +307,8 @@ def run_breakout_ex(
         "cost": cost,
         "n_breakouts": int(n_breakouts),
         "n_trades": len(trades),
+        "n_breaker_blocked": int(n_breaker_blocked),
+        "halted_days": int(len(halted_days)),
     }
 
 
