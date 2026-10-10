@@ -16,6 +16,7 @@ Outputs: results/risk_grid.csv, risk_bootstrap.csv, risk_placebo.csv,
 
 from __future__ import annotations
 
+import argparse
 import os
 import sys
 import time
@@ -38,6 +39,8 @@ from tf_mnq.strategies import strategy_frame, veto_blocked  # noqa: E402
 RESULTS_DIR = os.path.join(_PKG_ROOT, "results")
 IS_START, IS_END = "2019-05-06", "2023-12-31"
 FREQ = "15min"
+SUFFIX = ""
+MD_NAME = "RISK_REDESIGN.md"
 COST = CostCfg(slip_ticks=1.5, commission_per_side=0.75, tick=0.25, point_value=2.0)
 COST3 = CostCfg(slip_ticks=3.0, commission_per_side=0.75, tick=0.25, point_value=2.0)
 PV = 2.0
@@ -84,7 +87,7 @@ def bootstrap_pf(trades, n_boot=N_BOOT, seed=12345):
     return float((pfs <= 1.0).mean()), float(np.percentile(pfs, 5))
 
 
-def metrics_row(res, cost, tag, kind):
+def metrics_row(res, cost, tag, kind, ppy):
     idx = res["equity"].index
     eq = res["equity"].to_numpy(float)
     cap = float(res["capital"])
@@ -99,7 +102,7 @@ def metrics_row(res, cost, tag, kind):
     cagr = (end / ACCOUNT) ** (1.0 / years) - 1.0 if end > 0 and years > 0 else np.nan
     ret = np.diff(eq_usd) / eq_usd[:-1] if len(eq_usd) > 1 else np.array([])
     sd = ret.std(ddof=1) if ret.size > 1 else np.nan
-    sharpe = ret.mean() / sd * np.sqrt(23941.7) if (np.isfinite(sd) and sd > 0) else np.nan
+    sharpe = ret.mean() / sd * np.sqrt(ppy) if (np.isfinite(sd) and sd > 0) else np.nan
     daily = pd.Series(eq_usd, index=idx).resample("D").last().dropna()
     worst_day = float(daily.diff().min()) if len(daily) > 1 else np.nan
     return {
@@ -123,9 +126,14 @@ def metrics_row(res, cost, tag, kind):
 # --------------------------------------------------------------------------- #
 # grid definition
 # --------------------------------------------------------------------------- #
-def build_variants():
+def build_variants(scale: float = 1.0):
+    """scale = ATR(freq)/ATR(15min); fixed-pt C1/C2/C3 thresholds are rescaled,
+    while all k*ATR multipliers (E1/E2/E4/E5) carry over unchanged."""
     def mk(tag, family, primary, cost=COST, **ov):
         return {"tag": tag, "family": family, "cost": cost, "primary": primary, "ov": ov}
+    dl1, dl2 = -100.0 * scale, -150.0 * scale
+    dd1, dd2 = 300.0 * scale, 500.0 * scale
+    wk = -250.0 * scale
     V = [
         mk("R0_base_1.5t", "R0", [], COST),
         mk("R0_base_3t", "R0", [], COST3),
@@ -144,32 +152,33 @@ def build_variants():
         mk("F1_donch48", "F1", [("donch", 48)], donch=48),
         mk("F2_cap75", "F2", [("cap", 75)], cap=75),
         mk("F2_cap85", "F2", [("cap", 85)], cap=85),
-        mk("C1_daily100", "C1", [("daily", -100)], breaker={"daily": -100}),
-        mk("C1_daily150", "C1", [("daily", -150)], breaker={"daily": -150}),
-        mk("C2_dd300", "C2", [("dd", 300)], breaker={"dd": 300}),
-        mk("C2_dd500", "C2", [("dd", 500)], breaker={"dd": 500}),
-        mk("C3_weekly250", "C3", [("weekly", -250)], breaker={"weekly": -250}),
+        mk("C1_daily100", "C1", [("daily", dl1)], breaker={"daily": dl1}),
+        mk("C1_daily150", "C1", [("daily", dl2)], breaker={"daily": dl2}),
+        mk("C2_dd300", "C2", [("dd", dd1)], breaker={"dd": dd1}),
+        mk("C2_dd500", "C2", [("dd", dd2)], breaker={"dd": dd2}),
+        mk("C3_weekly250", "C3", [("weekly", wk)], breaker={"weekly": wk}),
     ]
     return V
 
 
-DOMAIN = {
-    "stop_mult": [1.0, 1.5, 2.0, 2.5],
-    "initial_stop_mult": [1.0, 1.5, 2.0],
-    "breakeven_atr": [1.0, 1.5],
-    "time_stop_bars": [16, 48],
-    "donch": [20, 32, 48],
-    "cap": [75, 85, 90],
-    "daily": [-100, -150],
-    "weekly": [-250],
-    "dd": [300, 500],
-}
+def make_domain(scale: float = 1.0):
+    return {
+        "stop_mult": [1.0, 1.5, 2.0, 2.5],
+        "initial_stop_mult": [1.0, 1.5, 2.0],
+        "breakeven_atr": [1.0, 1.5],
+        "time_stop_bars": [16, 48],
+        "donch": [20, 32, 48],
+        "cap": [75, 85, 90],
+        "daily": [-100.0 * scale, -150.0 * scale],
+        "weekly": [-250.0 * scale],
+        "dd": [300.0 * scale, 500.0 * scale],
+    }
 
 
-def neighbors_of(primary):
+def neighbors_of(primary, domain):
     out = []
     for pname, pval in primary:
-        dom = DOMAIN.get(pname, [])
+        dom = domain.get(pname, [])
         if pval not in dom:
             continue
         j = dom.index(pval)
@@ -182,6 +191,14 @@ def neighbors_of(primary):
 
 # --------------------------------------------------------------------------- #
 def main() -> int:
+    global FREQ, SUFFIX, MD_NAME, N_PLACEBO
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--freq", default="15min", choices=["15min", "5min"])
+    args = ap.parse_args()
+    FREQ = args.freq
+    SUFFIX = "" if FREQ == "15min" else f"_{FREQ}"
+    MD_NAME = "RISK_REDESIGN.md" if FREQ == "15min" else f"RISK_REDESIGN_{FREQ.upper()}.md"
+    N_PLACEBO = 500 if FREQ == "15min" else 200
     t0 = time.perf_counter()
     os.makedirs(RESULTS_DIR, exist_ok=True)
 
@@ -193,7 +210,19 @@ def main() -> int:
     sf = sf_all.reindex(bars.index)
     atr = feat["atr"]
     ppy = len(bars) / ((bars.index[-1] - bars.index[0]).days / 365.25)
-    print(f"IS {FREQ}: {len(bars)} bars [{bars.index[0]} .. {bars.index[-1]}] ppy={ppy:.1f}")
+
+    # pre-registered rescale: ATR(freq)/ATR(15min), measured on IS only
+    if FREQ != "15min":
+        a15 = compute_features(load_bars("15min"))["atr"]
+        a15 = a15[(a15.index >= pd.Timestamp(IS_START)) & (a15.index <= pd.Timestamp(IS_END))]
+        atr_ratio = float(np.nanmedian(atr) / np.nanmedian(a15))
+    else:
+        atr_ratio = 1.0
+    scale = atr_ratio
+    domain = make_domain(scale)
+    print(f"=== FREQ={FREQ} IS bars={len(bars)} [{bars.index[0]} .. {bars.index[-1]}] ppy={ppy:.1f} ===")
+    print(f"ATR ratio {FREQ}/15min = {atr_ratio:.4f} -> fixed-pt breaker thresholds scaled x{scale:.4f} "
+          f"(C1 {[-100*scale,-150*scale]}, C2 {[300*scale,500*scale]}, C3 {-250*scale})")
 
     blocked_cache = {}
 
@@ -220,16 +249,17 @@ def main() -> int:
 
     # ---------------- baseline reproduction guard ----------------
     base_res = run_v({}, COST)
-    base_row = metrics_row(base_res, COST, "R0_base_1.5t", "grid")
-    print(f"BASE reproduction: n={base_row['n']} PF={base_row['PF']:.4f} "
-          f"expectancy=${base_row['expectancy_usd']:.2f} MaxDD_usd=${base_row['MaxDD_usd']:.0f} "
-          f"(audit no_narrow: n=1302 PF=1.2348 MaxDD $2304)")
+    base_row = metrics_row(base_res, COST, "R0_base_1.5t", "grid", ppy)
+    print(f"BASE {FREQ}: n={base_row['n']} PF={base_row['PF']:.4f} win={base_row['win']:.3f} "
+          f"expectancy=${base_row['expectancy_usd']:.2f} MaxDD_pt={base_row['MaxDD_pt']:.0f} "
+          f"MaxDD_usd=${base_row['MaxDD_usd']:.0f} CAGR$={base_row['CAGR_usd']*100:.2f}% "
+          f"Sharpe$={base_row['Sharpe_usd']:.2f}")
 
-    variants = build_variants()
+    variants = build_variants(scale)
 
     def evaluate(v):
         res = run_v(v["ov"], v["cost"])
-        row = metrics_row(res, v["cost"], v["tag"], f"grid_{v['family']}")
+        row = metrics_row(res, v["cost"], v["tag"], f"grid_{v['family']}", ppy)
         row["family"] = v["family"]
         bp, ci5 = bootstrap_pf(res["trades"])
         row["boot_p"] = bp
@@ -242,7 +272,7 @@ def main() -> int:
         row, res = evaluate(v)
         rows.append(row)
         res_store[v["tag"]] = (res, v)
-        save(pd.DataFrame(res["trades"]), f"risk_trades_{v['tag']}.csv")
+        save(pd.DataFrame(res["trades"]), f"risk_trades_{v['tag']}{SUFFIX}.csv")
     grid = pd.DataFrame(rows)
     print(f"first batch: {len(variants)} configs in {time.perf_counter()-t1:.1f}s")
 
@@ -283,7 +313,7 @@ def main() -> int:
         row, res = evaluate(v)
         x_rows.append(row)
         res_store[v["tag"]] = (res, v)
-        save(pd.DataFrame(res["trades"]), f"risk_trades_{v['tag']}.csv")
+        save(pd.DataFrame(res["trades"]), f"risk_trades_{v['tag']}{SUFFIX}.csv")
     if x_rows:
         grid = pd.concat([grid, pd.DataFrame(x_rows)], ignore_index=True)
     print(f"interactions added: {[v['tag'] for v in x_variants]}")
@@ -295,13 +325,13 @@ def main() -> int:
     for tag in cand["tag"]:
         ov = res_store[tag][1]["ov"]
         res3 = run_v(ov, COST3)
-        row3 = metrics_row(res3, COST3, tag, res_store[tag][1]["kind"])
+        row3 = metrics_row(res3, COST3, tag, res_store[tag][1]["kind"], ppy)
         row3["family"] = res_store[tag][1]["family"]
         bp3, ci5 = bootstrap_pf(res3["trades"])
         row3["boot_p"] = bp3
         row3["boot_ci5_PF"] = ci5
         stress_rows.append(row3)
-        save(pd.DataFrame(res3["trades"]), f"risk_trades_{tag}_3t.csv")
+        save(pd.DataFrame(res3["trades"]), f"risk_trades_{tag}_3t{SUFFIX}.csv")
     if stress_rows:
         grid = pd.concat([grid, pd.DataFrame(stress_rows)], ignore_index=True)
 
@@ -327,7 +357,7 @@ def main() -> int:
         # neighborhood gate g4 (1.5t and 3t MaxDD <= 1500)
         nbr_ok = True
         nbr_dd = []
-        for pname, pval in neighbors_of(v["primary"]):
+        for pname, pval in neighbors_of(v["primary"], domain):
             nov = dict(v["ov"])
             if pname in ("daily", "weekly", "dd"):
                 b = dict(nov.get("breaker", {}))
@@ -335,8 +365,8 @@ def main() -> int:
                 nov["breaker"] = b
             else:
                 nov[pname] = pval
-            rn = metrics_row(run_v(nov, COST), COST, f"{tag}~{pname}={pval}", "nbr")
-            rn3 = metrics_row(run_v(nov, COST3), COST3, f"{tag}~{pname}={pval}", "nbr")
+            rn = metrics_row(run_v(nov, COST), COST, f"{tag}~{pname}={pval}", "nbr", ppy)
+            rn3 = metrics_row(run_v(nov, COST3), COST3, f"{tag}~{pname}={pval}", "nbr", ppy)
             nbr_dd.append(max(rn["MaxDD_usd"], rn3["MaxDD_usd"]))
         if nbr_dd:
             nbr_ok = bool(max(nbr_dd) <= DD_HARD)
@@ -350,7 +380,7 @@ def main() -> int:
         })
     res_tab = pd.DataFrame(results)
     grid = grid.merge(res_tab, on=["tag", "family"], how="left")
-    save(grid, "risk_grid.csv")
+    save(grid, f"risk_grid{SUFFIX}.csv")
 
     passers = res_tab[res_tab["pass"]]
     print("=" * 78)
@@ -428,16 +458,16 @@ def main() -> int:
                                entry_mode=p["entry_mode"])
 
     rng = np.random.default_rng(424242)
-    scale, draw = 1.0, real_ntr
-    for _ in range(4):
-        med = float(np.median([len(run_placebo(int(round(scale * real_ntr)))["trades"]) for _ in range(30)]))
+    scale_draw, draw = 1.0, real_ntr
+    for _ in range(3):
+        med = float(np.median([len(run_placebo(int(round(scale_draw * real_ntr)))["trades"]) for _ in range(12)]))
         if med <= 0:
             break
-        scale = min(2.5, scale * real_ntr / med)
-        draw = min(int(round(scale * real_ntr)), cand_idx.size)
+        scale_draw = min(2.5, scale_draw * real_ntr / med)
+        draw = min(int(round(scale_draw * real_ntr)), cand_idx.size)
         if abs(med - real_ntr) / real_ntr < 0.05:
             break
-    print(f"placebo draw={draw} (scale={scale:.2f}) target n={real_ntr}, breaker={ref_v['ov'].get('breaker')}")
+    print(f"placebo draw={draw} (scale={scale_draw:.2f}) target n={real_ntr}, breaker={ref_v['ov'].get('breaker')}")
     t2 = time.perf_counter()
     plac_pf = np.empty(N_PLACEBO)
     plac_ntr = np.empty(N_PLACEBO, dtype=int)
@@ -449,7 +479,7 @@ def main() -> int:
     plac_pf_f = plac_pf[np.isfinite(plac_pf)]
     pf_pct = float((plac_pf_f < real_pf).mean())
     placebo = pd.DataFrame({"PF": plac_pf, "n_trades": plac_ntr})
-    save(placebo, "risk_placebo.csv")
+    save(placebo, f"risk_placebo{SUFFIX}.csv")
     print(f"placebo {N_PLACEBO} runs in {time.perf_counter()-t2:.0f}s; real PF={real_pf:.4f} "
           f"pct={pf_pct*100:.1f}% p95={np.percentile(plac_pf_f,95):.3f} "
           f"max={plac_pf_f.max():.3f} median_n={np.median(plac_ntr):.0f}")
@@ -471,7 +501,7 @@ def main() -> int:
         columns={"boot_p": "boot_p_3t", "boot_ci5_PF": "boot_ci5_PF_3t"})
     boot_tab = pd.concat([boot_tab.set_index("tag"),
                           boot3.set_index("tag")], axis=1).reset_index()
-    save(boot_tab, "risk_bootstrap.csv")
+    save(boot_tab, f"risk_bootstrap{SUFFIX}.csv")
 
     # ---------------- markdown ----------------
     def fmt_row(df, tag, cost):
@@ -485,8 +515,12 @@ def main() -> int:
                 f"{int(r['halted_days'])} | {int(r['trades_foregone'])} | {r['MAR']:.3f} |")
 
     lines = []
-    lines.append("# RISK-FIRST REDESIGN — IS-only verdict\n")
+    lines.append(f"# RISK-FIRST REDESIGN ({FREQ}) — IS-only verdict\n")
     lines.append(f"- Base = Donchian-20, trail 2.5xATR, vetoes {{VR>=1, ATRpct<=90}}, market, 1.5t, 1 contract, $50k.\n")
+    lines.append(f"- FREQ={FREQ}; IS bars={len(bars)}; ppy={ppy:.1f}; ATR ratio {FREQ}/15min = {atr_ratio:.4f}.")
+    lines.append(f"- Pre-registered rescale: fixed-pt C1/C2/C3 thresholds x{scale:.4f} "
+                 f"(C1 {[-100*scale,-150*scale]}, C2 {[300*scale,500*scale]}, C3 {-250*scale} pt); "
+                 f"all k*ATR multipliers unchanged; USD DD gates unscaled ($1200 / $1500).\n")
     lines.append(f"- Pre-registered gate: MaxDD_usd@1c <= ${DD_GATE:.0f} (hard), PF>=1.10, boot p<=0.10, "
                  f"expectancy>=$2, n>=300, worst trade <= $500, neighborhood MaxDD<=${DD_HARD:.0f}.\n")
     lines.append(f"- **Verdict: {'1+ PASSER(S)' if len(passers) else 'ZERO PASSERS'}** "
@@ -571,13 +605,40 @@ def main() -> int:
                  f"PnL=${yc_base['pnl_usd']:.0f}; ref: n={yc_ref['n']}, PF={yc_ref['PF']:.3f}, "
                  f"PnL=${yc_ref['pnl_usd']:.0f}.")
     lines.append("- OOS NOT touched this round.")
+
+    # 15min vs 5min comparison
+    other = "" if FREQ == "5min" else "_5min"
+    other_freq = "5min" if FREQ == "15min" else "15min"
+    other_path = os.path.join(RESULTS_DIR, f"risk_grid{other}.csv")
+    if os.path.exists(other_path):
+        try:
+            og = pd.read_csv(other_path)
+            lines.append("")
+            lines.append(f"## {FREQ} vs {other_freq} comparison (IS, 1.5t)\n")
+            lines.append(f"| config | {FREQ} n | {FREQ} PF | {FREQ} MaxDD$ | {other_freq} n | {other_freq} PF | {other_freq} MaxDD$ |")
+            lines.append("|---|---|---|---|---|---|---|")
+            for tag in ("R0_base_1.5t", "F1_donch32", "E3_ratchet", "E5_time16",
+                        "C2_dd300", "C2_dd500"):
+                r = grid[(grid["tag"] == tag) & (grid["cost"] == "1.5t")]
+                o = og[(og["tag"] == tag) & (og["cost"] == "1.5t")]
+                if not len(r):
+                    continue
+                r = r.iloc[0]
+                if len(o):
+                    o = o.iloc[0]
+                    lines.append(f"| {tag} | {int(r['n'])} | {r['PF']:.3f} | ${r['MaxDD_usd']:.0f} | "
+                                 f"{int(o['n'])} | {o['PF']:.3f} | ${o['MaxDD_usd']:.0f} |")
+                else:
+                    lines.append(f"| {tag} | {int(r['n'])} | {r['PF']:.3f} | ${r['MaxDD_usd']:.0f} | — | — | — |")
+        except Exception as exc:  # noqa: BLE001
+            lines.append(f"- (comparison unavailable: {exc})")
     lines.append("")
-    with open(os.path.join(RESULTS_DIR, "RISK_REDESIGN.md"), "w", encoding="utf-8") as fh:
+    with open(os.path.join(RESULTS_DIR, MD_NAME), "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines))
 
     print("=" * 78)
-    print("SAVED: risk_grid.csv, risk_bootstrap.csv, risk_placebo.csv, "
-          "risk_trades_*.csv, RISK_REDESIGN.md")
+    print(f"SAVED: risk_grid{SUFFIX}.csv, risk_bootstrap{SUFFIX}.csv, "
+          f"risk_placebo{SUFFIX}.csv, risk_trades_*{SUFFIX}.csv, {MD_NAME}")
     print(f"TOTAL RUNTIME {time.perf_counter()-t0:.1f}s")
     return 0
 
